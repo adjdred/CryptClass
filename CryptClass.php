@@ -16,9 +16,11 @@ class Crypt {
         /**
          * Default CryptAesClass settings
          */
-        static public $compress = true;
-        static public $url_safe = true;
-        static public $base64_encode = true;
+        static public $compress = true;         // compress the data before encrypting
+        static public $base64_encode = true;    // base64_encode the encrypted data
+        static public $url_safe = true;         // make the encrypted data url_safe
+        static public $use_keygen = true;       // transform a user supplied key into a key using more of the available keyspace
+        static public $keygen_length = 32;      // where 32 = AES256, 24 = AES192, 16 = AES128
         static public $test_decrypt_before_return = false;
         
         /**
@@ -58,6 +60,17 @@ class Crypt {
         }
         
         /**
+         * keygen
+         * 
+         * @param string $data
+         * @return string
+         */
+        static public function keygen($clear_text,$length=32) {
+                self::__init(null);
+                return self::$CryptAesClass->keygen($clear_text,$length);
+        }
+        
+        /**
          * __init
          * 
          * @param string $key 
@@ -71,9 +84,11 @@ class Crypt {
                 
                 // Setup the options for CryptAesClass
                 $options = array(
-                    'compress' => self::$compress,
-                    'url_safe' => self::$url_safe,
-                    'base64_encode' => self::$base64_encode,
+                    'compress'          => self::$compress,
+                    'base64_encode'     => self::$base64_encode,
+                    'url_safe'          => self::$url_safe,
+                    'use_keygen'        => self::$use_keygen,
+                    'keygen_length'     => self::$keygen_length,
                     'test_decrypt_before_return' => self::$test_decrypt_before_return,
                 );
                 
@@ -128,9 +143,11 @@ class CryptAesClass {
                 // The options to use
                 $this->options = array_merge(
                         array(
-                            'compress' => true,
-                            'url_safe' => true,
-                            'base64_encode' => true,
+                            'compress' => true,         // compress the data before encrypting
+                            'base64_encode' => true,    // base64_encode the encrypted data
+                            'url_safe' => true,         // make the encrypted data url_safe
+                            'use_keygen' => true,       // transform a user supplied key into a key using more of the available keyspace
+                            'keygen_length' => 32,      // where 32 = AES256, 24 = AES192, 16 = AES128
                             'test_decrypt_before_return' => false,
                         ),
                         (array)$options
@@ -238,6 +255,30 @@ class CryptAesClass {
         }
         
         /**
+         * keygen()
+         * 
+         * generates the same return value for any given input value
+         * 
+         * @param string $clear_text 
+         */
+        public function keygen($clear_text,$length=null) {
+                
+                // Set the length of the key we will generate here
+                if(empty($length)) {
+                        $length = $this->options['keygen_length'];
+                }
+                
+                // The hard coded first character to pick from the $string below
+                $first_character_position = 20;
+                
+                // The generated string based on the known $clear_text
+                $string = base64_encode(base64_encode(md5($clear_text,true).md5($clear_text,true)));
+                
+                // The key to return based on the first position and the required length
+                return substr($string,$first_character_position,$length);
+        }
+        
+        /**
          * _decryptData
          * 
          * @param string $data_with_iv_suffix
@@ -249,9 +290,14 @@ class CryptAesClass {
                 
                 $this->_preChecks($key);
                 
+                // Transform the user key into something that uses a wider spectrum of the possible keyspace
+                if($this->options['use_keygen']) {
+                        $key = $this->keygen($key,$this->options['keygen_length']);
+                }
+                
                 // encrypt the data
                 $data = mcrypt_decrypt(
-                        MCRYPT_RIJNDAEL_128,    // AES is block size 128 only
+                        MCRYPT_RIJNDAEL_128,    // AES is RIJNDAEL with a block size of 128 bits only
                         $key,                   // secret key - NOTE: key size determines AES_128, AES_192 or AES_256
                         substr($data_with_iv_suffix,0,(strlen($data_with_iv_suffix)-16)), // the data with the last 128 bytes (16 chars) removed since that part is the iv
                         MCRYPT_MODE_CBC,        // cipher mode
@@ -279,12 +325,17 @@ class CryptAesClass {
                 
                 $this->_preChecks($key);
                 
+                // Transform the user key into something that uses a wider spectrum of the possible keyspace
+                if($this->options['use_keygen']) {
+                        $key = $this->keygen($key,$this->options['keygen_length']);
+                }
+                
                 // Choose a good random iv -> 16chars * 8bits = 128 block size for MCRYPT_RIJNDAEL_128
-                $iv = substr(str_shuffle(base64_encode( md5(mt_rand(10000000,99999999)).md5(microtime(true)) )),0,16);
+                $iv = $this->keygen(md5(mt_rand(0,1000000000)).md5(mt_rand(0,1000000000)),16);
                 
                 // encrypt the data
                 $data = mcrypt_encrypt(
-                        MCRYPT_RIJNDAEL_128,    // AES is block size 128 only
+                        MCRYPT_RIJNDAEL_128,    // AES is RIJNDAEL with a block size of 128 bits only
                         $key,                   // secret key - NOTE: key size determines AES_128, AES_192 or AES_256
                         $data,                  // data to encrypt
                         MCRYPT_MODE_CBC,        // cipher mode
