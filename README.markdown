@@ -33,10 +33,12 @@ Usage Examples
 Copy or symlink the CryptClass.php file into the Vendor path, then
 
 in bootstrap.php or core.php
+
     App::uses('CryptClass', 'Vendor');
     Crypt::$key = Config::read('Security.salt');
 
 in your application code
+
     $encrypted = Crypt::encrypt($my_data);
     $decrypted = Crypt::decrypt($encrypted);
 
