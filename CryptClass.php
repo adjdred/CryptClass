@@ -269,9 +269,15 @@ class CryptAesClass {
                 }
                 
                 // The hard coded first character to pick from the $string below
+				// we do this because the first set of characters in a base64_encode
+				// comes from a limited range of characters which is what we want
+				// avoid in the first place
                 $first_character_position = 20;
                 
-                // The generated string based on the known $clear_text
+                // The generated string based on the known $clear_text - to get
+				// a good jumble of (printable) characters we use the expression
+				// below which will always return the same output string for the
+				// same input clear_text
                 $string = base64_encode(base64_encode(md5($clear_text,true).md5($clear_text,true)));
                 
                 // The key to return based on the first position and the required length
