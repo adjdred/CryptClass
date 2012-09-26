@@ -294,13 +294,13 @@ class CryptAesClass {
          */
         protected function _decryptData($data_with_iv_suffix,$key) {
                 
-                $this->_preChecks($key);
-                
                 // Transform the user key into something that uses a wider spectrum of the possible keyspace
                 if($this->options['use_keygen']) {
                         $key = $this->keygen($key,$this->options['keygen_length']);
                 }
-                
+
+               $this->_preChecks($key);
+ 				
                 // encrypt the data
                 $data = mcrypt_decrypt(
                         MCRYPT_RIJNDAEL_128,    // AES is RIJNDAEL with a block size of 128 bits only
@@ -329,12 +329,12 @@ class CryptAesClass {
          */
         protected function _encryptData($data,$key) {
                 
-                $this->_preChecks($key);
-                
                 // Transform the user key into something that uses a wider spectrum of the possible keyspace
                 if($this->options['use_keygen']) {
                         $key = $this->keygen($key,$this->options['keygen_length']);
                 }
+				
+                $this->_preChecks($key);
                 
                 // Choose a good random iv -> 16chars * 8bits = 128 block size for MCRYPT_RIJNDAEL_128
                 $iv = $this->keygen(md5(mt_rand(0,1000000000)).md5(mt_rand(0,1000000000)),16);
